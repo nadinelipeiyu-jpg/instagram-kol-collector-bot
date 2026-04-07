@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.nadine.kolbot</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/nadine/kol-bot/run_bot.sh</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/nadine/kol-bot</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/nadine/kol-bot/bot.stdout.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/nadine/kol-bot/bot.stderr.log</string>
+</dict>
+</plist>

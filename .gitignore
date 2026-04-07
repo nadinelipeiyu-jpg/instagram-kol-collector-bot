@@ -1,0 +1,12 @@
+.env
+service_account.json
+.telegram_offset
+.DS_Store
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+kol-bot/venv/
+bot.stdout.log
+bot.stderr.log
