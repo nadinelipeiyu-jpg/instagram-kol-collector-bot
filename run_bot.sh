@@ -1,6 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-cd /Users/nadine/kol-bot
-source /Users/nadine/kol-bot/venv/bin/activate
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
+cd "$SCRIPT_DIR"
+source "$SCRIPT_DIR/venv/bin/activate"
 exec python -m kol_bot.cli run

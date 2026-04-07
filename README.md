@@ -39,7 +39,7 @@ kol-bot/
 │   └── parsing.py          # Instagram URL / Bio 解析
 ├── telegram_kol_mvp_bot.py # 相容入口
 ├── run_bot.sh              # 啟動腳本
-├── com.nadine.kolbot.plist # macOS launchd 設定
+├── com.kolbot.agent.plist  # macOS launchd 設定
 ├── requirements.txt
 └── .env.example
 ```
@@ -165,15 +165,15 @@ https://storage.googleapis.com/<bucket>/avatars/<username>.jpg
 專案已附：
 
 - `run_bot.sh`
-- `com.nadine.kolbot.plist`
+- `com.kolbot.agent.plist`
 
 安裝方式：
 
 ```bash
 mkdir -p ~/Library/LaunchAgents
-cp com.nadine.kolbot.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.nadine.kolbot.plist
-launchctl start com.nadine.kolbot
+cp com.kolbot.agent.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.kolbot.agent.plist
+launchctl start com.kolbot.agent
 ```
 
 查看 log：

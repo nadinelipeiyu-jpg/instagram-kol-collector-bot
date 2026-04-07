@@ -3,27 +3,19 @@
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.nadine.kolbot</string>
+  <string>com.kolbot.agent</string>
 
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>/Users/nadine/kol-bot/run_bot.sh</string>
+    <string>-lc</string>
+    <string>exec "$HOME/kol-bot/run_bot.sh" >> "$HOME/kol-bot/bot.stdout.log" 2>> "$HOME/kol-bot/bot.stderr.log"</string>
   </array>
-
-  <key>WorkingDirectory</key>
-  <string>/Users/nadine/kol-bot</string>
 
   <key>RunAtLoad</key>
   <true/>
 
   <key>KeepAlive</key>
   <true/>
-
-  <key>StandardOutPath</key>
-  <string>/Users/nadine/kol-bot/bot.stdout.log</string>
-
-  <key>StandardErrorPath</key>
-  <string>/Users/nadine/kol-bot/bot.stderr.log</string>
 </dict>
 </plist>
