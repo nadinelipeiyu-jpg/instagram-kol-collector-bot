@@ -1,0 +1,15 @@
+.git
+.env
+*.env
+service_account.json
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.telegram_offset
+bot.stdout.log
+bot.stderr.log
+.DS_Store
+*.md
+com.kolbot.agent.plist
+run_bot.sh

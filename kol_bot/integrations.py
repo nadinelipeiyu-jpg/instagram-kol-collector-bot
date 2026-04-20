@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import logging
 import re
 from pathlib import Path
 from typing import Optional
@@ -19,6 +21,8 @@ from .parsing import (
     parse_shortcode_from_url,
     parse_username_from_url,
 )
+
+logger = logging.getLogger(__name__)
 
 LEGACY_HEADERS = [
     "created_at",
@@ -70,6 +74,22 @@ SHEET_HEADERS = [
 ]
 
 
+def _load_credentials(settings: Settings, scopes: list[str]) -> Credentials:
+    """Load Google credentials from JSON content (cloud) or file (local)."""
+    if settings.google_service_account_json_content:
+        info = json.loads(settings.google_service_account_json_content)
+        return Credentials.from_service_account_info(info, scopes=scopes)
+    return Credentials.from_service_account_file(settings.google_service_account_json, scopes=scopes)
+
+
+def _load_gcs_client(settings: Settings) -> storage.Client:
+    """Load GCS client from JSON content (cloud) or file (local)."""
+    if settings.google_service_account_json_content:
+        info = json.loads(settings.google_service_account_json_content)
+        return storage.Client.from_service_account_info(info)
+    return storage.Client.from_service_account_json(settings.google_service_account_json)
+
+
 class TelegramClient:
     def __init__(self, settings: Settings) -> None:
         self.api_base = f"https://api.telegram.org/bot{settings.telegram_bot_token}"
@@ -89,6 +109,24 @@ class TelegramClient:
             timeout=20,
         )
         response.raise_for_status()
+
+    def set_webhook(self, url: str) -> None:
+        response = requests.post(
+            f"{self.api_base}/setWebhook",
+            json={"url": url, "drop_pending_updates": False},
+            timeout=20,
+        )
+        response.raise_for_status()
+        result = response.json()
+        if result.get("ok"):
+            logger.info("Telegram webhook set: %s", url)
+        else:
+            logger.warning("setWebhook returned not-ok: %s", result)
+
+    def delete_webhook(self) -> None:
+        response = requests.post(f"{self.api_base}/deleteWebhook", timeout=20)
+        response.raise_for_status()
+        logger.info("Telegram webhook deleted")
 
 
 class GCSAvatarStorage:
@@ -113,13 +151,13 @@ class GCSAvatarStorage:
         blob = bucket.blob(object_name)
         blob.cache_control = "public, max-age=604800"
         blob.upload_from_string(response.content, content_type=content_type or "image/jpeg")
-        return f"https://storage.googleapis.com/{self.settings.gcs_bucket_name}/{object_name}"
+        public_url = f"https://storage.googleapis.com/{self.settings.gcs_bucket_name}/{object_name}"
+        logger.debug("Uploaded avatar for %s: %s", username, public_url)
+        return public_url
 
     def _get_client(self) -> storage.Client:
         if self._client is None:
-            self._client = storage.Client.from_service_account_json(
-                self.settings.google_service_account_json
-            )
+            self._client = _load_gcs_client(self.settings)
         return self._client
 
     @staticmethod
@@ -151,10 +189,7 @@ class SheetsRepository:
             "https://www.googleapis.com/auth/spreadsheets",
             "https://www.googleapis.com/auth/drive",
         ]
-        creds = Credentials.from_service_account_file(
-            self.settings.google_service_account_json,
-            scopes=scopes,
-        )
+        creds = _load_credentials(self.settings, scopes)
         gc = gspread.authorize(creds)
         sh = gc.open(self.settings.google_sheet_name)
         try:
@@ -168,7 +203,8 @@ class SheetsRepository:
     def find_row_by_username(self, username: str) -> Optional[int]:
         values = self.get_worksheet().get_all_values()
         for idx, row in enumerate(values[1:], start=2):
-            if len(row) >= 4 and row[3].strip().lower() == username.lower():
+            # Column index 2 = "帳號" (username)
+            if len(row) >= 3 and row[2].strip().lower() == username.lower():
                 return idx
         return None
 
@@ -387,6 +423,7 @@ class ApifyClient:
         if not actor_id:
             raise RuntimeError("缺少 Apify actor id")
 
+        logger.debug("Calling Apify actor %s with payload keys: %s", actor_id, list(payload.keys()))
         response = requests.post(
             f"https://api.apify.com/v2/acts/{actor_id}/run-sync-get-dataset-items",
             json=payload,
@@ -487,4 +524,3 @@ def load_offset(offset_file: str) -> Optional[int]:
 
 def save_offset(offset_file: str, offset: int) -> None:
     Path(offset_file).write_text(str(offset), encoding="utf-8")
-

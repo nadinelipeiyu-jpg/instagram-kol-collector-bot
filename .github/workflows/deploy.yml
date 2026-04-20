@@ -1,0 +1,75 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  REGION: asia-east1
+  SERVICE: kol-bot
+  IMAGE: asia-east1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/kol-bot/kol-bot
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # Required for Workload Identity Federation
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Authenticate to Google Cloud using a service account key stored in
+      # GitHub Secrets as GCP_SA_KEY (base64-encoded JSON).
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      # Ensure the Artifact Registry repository exists (idempotent)
+      - name: Ensure Artifact Registry repo
+        run: |
+          gcloud artifacts repositories describe kol-bot \
+            --location=${{ env.REGION }} --project=${{ secrets.GCP_PROJECT_ID }} \
+            2>/dev/null || \
+          gcloud artifacts repositories create kol-bot \
+            --repository-format=docker \
+            --location=${{ env.REGION }} \
+            --project=${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Build and push Docker image
+        run: |
+          docker build -t ${{ env.IMAGE }}:${{ github.sha }} -t ${{ env.IMAGE }}:latest .
+          docker push ${{ env.IMAGE }}:${{ github.sha }}
+          docker push ${{ env.IMAGE }}:latest
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.SERVICE }} \
+            --image ${{ env.IMAGE }}:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --project ${{ secrets.GCP_PROJECT_ID }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --min-instances 0 \
+            --max-instances 1 \
+            --memory 512Mi \
+            --timeout 300 \
+            --set-env-vars "SHEET_NAME=${{ secrets.SHEET_NAME }},WORKSHEET_NAME=${{ secrets.WORKSHEET_NAME }},GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME }},WEBHOOK_URL=${{ secrets.WEBHOOK_URL }}" \
+            --set-secrets "TG_TOKEN=TG_TOKEN:latest,APIFY_API_TOKEN=APIFY_API_TOKEN:latest,GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT=GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT:latest"
+
+      - name: Show service URL
+        run: |
+          gcloud run services describe ${{ env.SERVICE }} \
+            --region ${{ env.REGION }} \
+            --project ${{ secrets.GCP_PROJECT_ID }} \
+            --format "value(status.url)"

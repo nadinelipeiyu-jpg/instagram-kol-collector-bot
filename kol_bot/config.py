@@ -35,6 +35,9 @@ class Settings:
     google_sheet_name: str
     google_worksheet_name: str
     google_service_account_json: str
+    # Cloud deployment: set this to the full JSON content of service_account.json
+    # so no file is needed on disk. Takes priority over google_service_account_json.
+    google_service_account_json_content: str
     poll_interval_seconds: int
     offset_file: str
     apify_api_token: str
@@ -42,6 +45,9 @@ class Settings:
     apify_reel_actor_id: str
     gcs_bucket_name: str
     gcs_avatar_prefix: str
+    # Webhook / Cloud Run settings
+    webhook_port: int
+    webhook_url: str  # Public HTTPS URL of this service (e.g. Cloud Run URL)
 
 
 def load_settings() -> Settings:
@@ -53,6 +59,7 @@ def load_settings() -> Settings:
         google_service_account_json=resolve_local_path(
             os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "service_account.json")
         ),
+        google_service_account_json_content=os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT", ""),
         poll_interval_seconds=int(os.getenv("POLL_INTERVAL_SECONDS", "5")),
         offset_file=resolve_local_path(os.getenv("OFFSET_FILE", ".telegram_offset")),
         apify_api_token=os.getenv("APIFY_API_TOKEN", ""),
@@ -60,5 +67,7 @@ def load_settings() -> Settings:
         apify_reel_actor_id=os.getenv("APIFY_REEL_ACTOR_ID", "apify~instagram-reel-scraper"),
         gcs_bucket_name=os.getenv("GCS_BUCKET_NAME", "").strip(),
         gcs_avatar_prefix=os.getenv("GCS_AVATAR_PREFIX", "avatars").strip().strip("/"),
+        # Cloud Run injects PORT; default 8080
+        webhook_port=int(os.getenv("PORT", "8080")),
+        webhook_url=os.getenv("WEBHOOK_URL", "").rstrip("/"),
     )
-

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import time
 from datetime import datetime
 from pathlib import Path
@@ -15,6 +16,8 @@ from .integrations import (
 )
 from .models import CreatorRecord, count_bio_links
 from .parsing import build_instagram_profile_url, extract_first_instagram_url
+
+logger = logging.getLogger(__name__)
 
 
 class BotApp:
@@ -33,10 +36,12 @@ class BotApp:
             missing.append("APIFY_API_TOKEN")
         if not self.settings.gcs_bucket_name:
             missing.append("GCS_BUCKET_NAME")
-        if not Path(self.settings.google_service_account_json).exists():
-            missing.append(
-                f"GOOGLE_SERVICE_ACCOUNT_JSON file not found: {self.settings.google_service_account_json}"
-            )
+        # Accept JSON content (cloud) or file path (local)
+        if not self.settings.google_service_account_json_content:
+            if not Path(self.settings.google_service_account_json).exists():
+                missing.append(
+                    f"GOOGLE_SERVICE_ACCOUNT_JSON file not found: {self.settings.google_service_account_json}"
+                )
         if missing:
             raise RuntimeError("缺少必要設定：\n- " + "\n- ".join(missing))
 
@@ -44,13 +49,13 @@ class BotApp:
         self.validate_env()
         self.sheets.get_worksheet()
         offset = load_offset(self.settings.offset_file)
-        print("Bot started. Polling Telegram...")
+        logger.info("Bot started. Polling Telegram...")
 
         while True:
             try:
                 data = self.telegram.get_updates(offset=offset)
                 if not data.get("ok"):
-                    print("Telegram API returned not ok:", data)
+                    logger.warning("Telegram API returned not ok: %s", data)
                     time.sleep(self.settings.poll_interval_seconds)
                     continue
 
@@ -63,14 +68,14 @@ class BotApp:
                     if not message:
                         continue
 
-                    print("Received message:", message.get("text", ""))
+                    logger.info("Received message: %s", message.get("text", ""))
                     self.handle_message(message)
 
             except KeyboardInterrupt:
-                print("Stopped by user.")
+                logger.info("Stopped by user.")
                 break
             except Exception as exc:
-                print("Loop error:", exc)
+                logger.exception("Loop error: %s", exc)
                 time.sleep(self.settings.poll_interval_seconds)
 
     def handle_message(self, message: dict) -> None:
@@ -89,6 +94,7 @@ class BotApp:
             status, _ = self.sheets.upsert_record(record)
             self.telegram.send_message(chat_id, self._format_summary(record, status))
         except Exception as exc:
+            logger.exception("Error handling message for chat_id=%s", chat_id)
             self.telegram.send_message(chat_id, f"❌ 處理失敗：{exc}")
 
     def backfill_missing_avatars(self) -> tuple[int, int]:
@@ -114,6 +120,7 @@ class BotApp:
                 )
                 updated += 1
             except Exception:
+                logger.exception("Failed to backfill avatar for row %d (username=%s)", row_index, username)
                 skipped += 1
 
         return updated, skipped
@@ -141,4 +148,3 @@ class BotApp:
             f"📩 信箱：{email_status}\n"
             f"🌐 多連結：獲取到{bio_link_count}條"
         )
-
