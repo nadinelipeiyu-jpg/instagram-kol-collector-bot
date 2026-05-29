@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 from typing import Optional
@@ -117,9 +118,13 @@ class GCSAvatarStorage:
 
     def _get_client(self) -> storage.Client:
         if self._client is None:
-            self._client = storage.Client.from_service_account_json(
-                self.settings.google_service_account_json
-            )
+            if self.settings.google_service_account_json_content:
+                info = json.loads(self.settings.google_service_account_json_content)
+                self._client = storage.Client.from_service_account_info(info)
+            else:
+                self._client = storage.Client.from_service_account_json(
+                    self.settings.google_service_account_json
+                )
         return self._client
 
     @staticmethod
@@ -151,10 +156,14 @@ class SheetsRepository:
             "https://www.googleapis.com/auth/spreadsheets",
             "https://www.googleapis.com/auth/drive",
         ]
-        creds = Credentials.from_service_account_file(
-            self.settings.google_service_account_json,
-            scopes=scopes,
-        )
+        if self.settings.google_service_account_json_content:
+            info = json.loads(self.settings.google_service_account_json_content)
+            creds = Credentials.from_service_account_info(info, scopes=scopes)
+        else:
+            creds = Credentials.from_service_account_file(
+                self.settings.google_service_account_json,
+                scopes=scopes,
+            )
         gc = gspread.authorize(creds)
         sh = gc.open(self.settings.google_sheet_name)
         try:

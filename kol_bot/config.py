@@ -35,8 +35,9 @@ class Settings:
     google_sheet_name: str
     google_worksheet_name: str
     google_service_account_json: str
+    # 雲端部署時用這個：把整個 service_account.json 內容貼成環境變數
+    google_service_account_json_content: str
     poll_interval_seconds: int
-    offset_file: str
     apify_api_token: str
     apify_profile_actor_id: str
     apify_reel_actor_id: str
@@ -53,8 +54,8 @@ def load_settings() -> Settings:
         google_service_account_json=resolve_local_path(
             os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "service_account.json")
         ),
+        google_service_account_json_content=os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT", ""),
         poll_interval_seconds=int(os.getenv("POLL_INTERVAL_SECONDS", "5")),
-        offset_file=resolve_local_path(os.getenv("OFFSET_FILE", ".telegram_offset")),
         apify_api_token=os.getenv("APIFY_API_TOKEN", ""),
         apify_profile_actor_id=os.getenv("APIFY_PROFILE_ACTOR_ID", "dSCLg0C3YEZ83HzYX"),
         apify_reel_actor_id=os.getenv("APIFY_REEL_ACTOR_ID", "apify~instagram-reel-scraper"),

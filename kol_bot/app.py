@@ -33,9 +33,11 @@ class BotApp:
             missing.append("APIFY_API_TOKEN")
         if not self.settings.gcs_bucket_name:
             missing.append("GCS_BUCKET_NAME")
-        if not Path(self.settings.google_service_account_json).exists():
+        has_json_content = bool(self.settings.google_service_account_json_content)
+        has_json_file = Path(self.settings.google_service_account_json).exists()
+        if not has_json_content and not has_json_file:
             missing.append(
-                f"GOOGLE_SERVICE_ACCOUNT_JSON file not found: {self.settings.google_service_account_json}"
+                "GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT (env var) 或 service_account.json (本地檔案) 擇一"
             )
         if missing:
             raise RuntimeError("缺少必要設定：\n- " + "\n- ".join(missing))
